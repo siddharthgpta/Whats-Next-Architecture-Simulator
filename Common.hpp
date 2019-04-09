@@ -3,11 +3,14 @@
 
 #include <sys/time.h>
 #include <unistd.h>
+#include <mutex>
 
 using timeval = struct timeval;
 
 //change this later
-extern bool started;
+extern std::mutex m;
+extern int started_threads;
+extern bool start;
 extern bool incomplete;
 
 void gettimediff(timeval &start, timeval &end, timeval &time_diff);
