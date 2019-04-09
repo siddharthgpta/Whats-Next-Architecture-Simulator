@@ -9,10 +9,12 @@
 using namespace std;
 
 const Memory ReRAM{1000, 1500};
-const Memory SRAM{7000, 1500};
+const Memory SRAM{1200, 1500};
 
 const int number_of_multiplications = 100;
-bool started = false;
+mutex m;
+int started_threads = 0;
+bool start = false;
 bool incomplete = true;
 
 void print(ostream &os, vector<unsigned long long> &vec) {
@@ -44,10 +46,13 @@ int main(int argc, char *argv[]) {
     // get time ratio for simulation
     float time_ratio = atof(argv[1]);
 
+    // output stream
+    ofstream out;
+
     // random number generator
     random_device rd;
     mt19937_64 generator{rd()};
-    uniform_int_distribution<unsigned int> distribution{1000, 1000000};
+    uniform_int_distribution<unsigned int> distribution{1000000, 4000000};
 
     // variables to store data
     vector<unsigned int> multipliers{number_of_multiplications};
@@ -70,31 +75,64 @@ int main(int argc, char *argv[]) {
     //vectorize multiplicants
     transform(multipliers.begin(), multipliers.end(), vectorized_multipliers.begin(), generate_subword_vector);
 
-    // normal multiplication of values based on M0+ microcontrollers
-    GeneralMultiplier gm(SRAM);
-    time_taken = gm(vectorized_multipliers, multiplicants, result);
-    ofstream out1("output1.txt");
-    print(out1, result);
-    out1.close();
+    // normal multiplication of values based on M0+ microcontrollers on SRAM
+    GeneralMultiplier gm_SRAM(SRAM);
+    time_taken = gm_SRAM(vectorized_multipliers, multiplicants, result);
+    out.open("output_GM_SRAM.txt");
+    print(out, result);
+    out.close();
+    fill(result.begin(), result.end(), 0);
+
+    // normal multiplication of values based on M0+ microcontrollers on ReRAM
+    GeneralMultiplier gm_ReRAM(ReRAM);
+    /*time_taken = */gm_ReRAM(vectorized_multipliers, multiplicants, result);
+    out.open("output_GM_ReRAM.txt");
+    print(out, result);
+    out.close();
+    fill(result.begin(), result.end(), 0);
 
     cout << time_taken.tv_sec << "." << time_taken.tv_usec << '\n';
 
     // multiplication using What's Next pipeline;
-    ApproxMultiplier am(SRAM);
-    thread t1(&ApproxMultiplier::operator(), &am, std::ref(vectorized_multipliers), std::ref(multiplicants), std::ref(time_based_result));
+    ApproxMultiplier am_SRAM(SRAM);
+    thread t1(&ApproxMultiplier::operator(), &am_SRAM, std::ref(vectorized_multipliers), std::ref(multiplicants), std::ref(time_based_result));
 
     // sleep till half time
-    while(!started);
+    while(started_threads != 1);
+    start = true;
     sleep(time_taken.tv_sec * time_ratio);
     usleep(time_taken.tv_usec * time_ratio);
     incomplete = false;
 
-    //wait for thread to join
+    // wait for thread to join
     t1.join();
 
-    ofstream out2("output2.txt");
-    print(out2, time_based_result);
-    out2.close();
+    // reset variables for second thread
+    incomplete = true;
+    start = false;
+    started_threads = 0;
+
+    // run second thread
+    ApproxMultiplier am_ReRAM(ReRAM);
+    thread t2(&ApproxMultiplier::operator(), &am_ReRAM, std::ref(vectorized_multipliers), std::ref(multiplicants), std::ref(result));
+    
+    // sleep till half time
+    while(started_threads != 1);
+    start = true;
+    sleep(time_taken.tv_sec * time_ratio);
+    usleep(time_taken.tv_usec * time_ratio);
+    incomplete = false;
+    
+    // wait for thread to join
+    t2.join();
+
+    out.open("output_AM_SRAM.txt");
+    print(out, time_based_result);
+    out.close();
+
+    out.open("output_AM_ReRAM.txt");
+    print(out, result);
+    out.close();
 
     pid_t proc_id;
     if ((proc_id = fork()) == 0) {
@@ -103,5 +141,6 @@ int main(int argc, char *argv[]) {
     }
     
     wait(&proc_id);
+
     return 0;
 }

@@ -16,7 +16,7 @@ timeval GeneralMultiplier::operator()(const std::vector<std::vector<unsigned int
             for (size_t k = 0; k < multipliers[j][i]; ++k) {
                 *r += multiplicants[j];
             }
-            usleep(32);
+            usleep(4);
             mem.WriteDelay(8); // Write output to memory
         }
     }
