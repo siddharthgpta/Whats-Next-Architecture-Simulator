@@ -3,12 +3,15 @@
 using namespace std;
 
 timeval ApproxMultiplier::operator()(const std::vector<std::vector<unsigned int>> &multipliers, const std::vector<unsigned int> &multiplicants, std::vector<unsigned long long> &result) {
-    timeval start, end, time_taken;
+    timeval start_time, end_time, time_taken;
     vector<unsigned long long>::iterator r;
     size_t j, len = multipliers.size();
 
-    gettimeofday(&start, nullptr);
-    started = true;
+    gettimeofday(&start_time, nullptr);
+    m.lock();
+    ++started_threads;
+    m.unlock();
+    while(!start);
     for(int i = 0; incomplete && i < sizeof(unsigned int); ++i) {
         for(j = 0, r = result.begin(); incomplete && j < len && r != result.end(); ++j, ++r) {
             mem.ReadDelay(4); // Read multiplier
@@ -17,12 +20,12 @@ timeval ApproxMultiplier::operator()(const std::vector<std::vector<unsigned int>
             for (size_t k = 0; incomplete && k < multipliers[j][i]; ++k) {
                 *r += multiplicants[j];
             }
-            usleep(8);
+            usleep(1);
             mem.WriteDelay(8); // Write output to memory
         }
     }
-    gettimeofday(&end, nullptr);
+    gettimeofday(&end_time, nullptr);
     
-    gettimediff(start, end, time_taken);
+    gettimediff(start_time, end_time, time_taken);
     return time_taken;
 }
