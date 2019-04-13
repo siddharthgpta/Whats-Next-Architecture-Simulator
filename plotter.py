@@ -56,10 +56,13 @@ line6, = plt.plot(l4)
 plt.legend((line5, line6), ('Approximate multiplier(SRAM)', 'Approximate multiplier(ReRAM)'))
 plt.show()
 
-operations = 0
+res1 = [i/j for i,j in zip(l3, l1)]
+res2 = [i/j for i,j in zip(l4, l2)]
 
-for x,y in zip(l3,l4):
-    if x != 0 and y != 0 and int(x/y) != 0:
-        operations += 1
+operations_sram = 0
+operations_reram = 0
 
-print(operations)
+operations_sram = sum([(1 if i > 0.9 else 0) for i in res1])
+operations_reram = sum([(1 if i > 0.9 else 0) for i in res2])
+
+print("{0}, {1}".format(operations_sram, operations_reram))
